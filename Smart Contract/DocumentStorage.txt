@@ -1,0 +1,93 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract DocumentStorage {
+    struct Document {
+        string ipfsHash;
+        address issuer;
+        address receiver;
+        string title;
+        uint256 timestamp;
+        bool flagged;
+    }
+
+    Document[] public documents;
+    address public owner;
+
+    // Mapping from keccak256(ipfsHash, receiver) to document index + 1
+    // (index+1 to distinguish between "not found" (0) and first index (0))
+    mapping(bytes32 => uint256) private documentIndexByHashReceiver;
+
+    event DocumentStored(
+        uint256 indexed id,
+        string ipfsHash,
+        address indexed issuer,
+        address indexed receiver,
+        string title,
+        uint256 timestamp
+    );
+
+    event DocumentFlagged(uint256 indexed id, bool flagged);
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    // Store a new document
+    function storeDocument(string memory ipfsHash, address receiver, string memory title) public {
+        documents.push(Document(ipfsHash, msg.sender, receiver, title, block.timestamp, false));
+        uint256 docId = documents.length - 1;
+
+        // Map hash(receiver) to document index + 1
+        bytes32 key = keccak256(abi.encodePacked(ipfsHash, receiver));
+        documentIndexByHashReceiver[key] = docId + 1;
+
+        emit DocumentStored(docId, ipfsHash, msg.sender, receiver, title, block.timestamp);
+    }
+
+    // Get document by index
+    function getDocument(uint256 index) public view returns (
+        string memory,
+        address,
+        address,
+        string memory,
+        uint256,
+        bool
+    ) {
+        require(index < documents.length, "Invalid document index");
+        Document memory doc = documents[index];
+        return (doc.ipfsHash, doc.issuer, doc.receiver, doc.title, doc.timestamp, doc.flagged);
+    }
+
+    // Get total documents count
+    function getDocumentCount() public view returns (uint256) {
+        return documents.length;
+    }
+
+    // Verify document existence instantly by ipfsHash and receiver
+    function verifyDocument(string memory ipfsHash, address receiver) public view returns (
+        bool exists,
+        address issuer,
+        uint256 timestamp,
+        bool flagged
+    ) {
+        bytes32 key = keccak256(abi.encodePacked(ipfsHash, receiver));
+        uint256 docIndexPlusOne = documentIndexByHashReceiver[key];
+        if (docIndexPlusOne == 0) {
+            // Not found
+            return (false, address(0), 0, false);
+        }
+
+        Document memory doc = documents[docIndexPlusOne - 1];
+        return (true, doc.issuer, doc.timestamp, doc.flagged);
+    }
+
+    // Only owner or issuer can flag/unflag a document
+    function setFlag(uint256 index, bool flagStatus) public {
+        require(index < documents.length, "Invalid document index");
+        Document storage doc = documents[index];
+        require(msg.sender == doc.issuer || msg.sender == owner, "Not authorized to flag");
+        doc.flagged = flagStatus;
+        emit DocumentFlagged(index, flagStatus);
+    }
+}
