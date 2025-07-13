@@ -16,11 +16,12 @@ class UserUploadedDocumentSerializer(serializers.ModelSerializer):
             'title',
             'ipfs_hash',
             'tx_hash',
-            'block_hash',       
+            'block_tx_hash',       
             'document_index',
             'uploaded_at',
+            'flagged',
         ]
-        read_only_fields = ['ipfs_hash', 'tx_hash', 'block_hash', 'document_index', 'uploaded_at']
+        read_only_fields = ['ipfs_hash', 'tx_hash', 'block_tx_hash', 'document_index', 'uploaded_at']
 
 
 class AuthorityIssuedDocumentSerializer(serializers.ModelSerializer):
@@ -42,8 +43,9 @@ class AuthorityIssuedDocumentSerializer(serializers.ModelSerializer):
             'title',
             'ipfs_hash',
             'tx_hash',
-            'block_hash',   
+            'block_tx_hash',   
             'document_index',
             'issued_at',
+            'flagged',
         ]
         read_only_fields = ['ipfs_hash', 'tx_hash', 'block_hash', 'document_index', 'issued_at']

@@ -9,14 +9,10 @@ contract DocumentStorage {
         string title;
         uint256 timestamp;
         bool flagged;
+        bytes32 txHash;
     }
 
     Document[] public documents;
-    address public owner;
-
-    // Mapping from keccak256(ipfsHash, receiver) to document index + 1
-    // (index+1 to distinguish between "not found" (0) and first index (0))
-    mapping(bytes32 => uint256) private documentIndexByHashReceiver;
 
     event DocumentStored(
         uint256 indexed id,
@@ -24,69 +20,166 @@ contract DocumentStorage {
         address indexed issuer,
         address indexed receiver,
         string title,
-        uint256 timestamp
+        uint256 timestamp,
+        bytes32 txHash
     );
 
     event DocumentFlagged(uint256 indexed id, bool flagged);
 
-    constructor() {
-        owner = msg.sender;
-    }
+    constructor() {}
 
-    // Store a new document
-    function storeDocument(string memory ipfsHash, address receiver, string memory title) public {
-        documents.push(Document(ipfsHash, msg.sender, receiver, title, block.timestamp, false));
+    // Store a new document and return its index
+    function storeDocument(
+        string memory ipfsHash,
+        address receiver,
+        string memory title
+    ) public returns (uint256) {
+        bytes32 txHash = keccak256(
+            abi.encodePacked(block.timestamp, msg.sender, receiver, ipfsHash, title, documents.length)
+        );
+
+        documents.push(
+            Document(ipfsHash, msg.sender, receiver, title, block.timestamp, false, txHash)
+        );
         uint256 docId = documents.length - 1;
 
-        // Map hash(receiver) to document index + 1
-        bytes32 key = keccak256(abi.encodePacked(ipfsHash, receiver));
-        documentIndexByHashReceiver[key] = docId + 1;
-
-        emit DocumentStored(docId, ipfsHash, msg.sender, receiver, title, block.timestamp);
+        emit DocumentStored(docId, ipfsHash, msg.sender, receiver, title, block.timestamp, txHash);
+        return docId;
     }
 
     // Get document by index
-    function getDocument(uint256 index) public view returns (
-        string memory,
-        address,
-        address,
-        string memory,
-        uint256,
-        bool
-    ) {
+    function getDocument(uint256 index)
+        public
+        view
+        returns (
+            string memory,
+            address,
+            address,
+            string memory,
+            uint256,
+            bool,
+            bytes32
+        )
+    {
         require(index < documents.length, "Invalid document index");
         Document memory doc = documents[index];
-        return (doc.ipfsHash, doc.issuer, doc.receiver, doc.title, doc.timestamp, doc.flagged);
+        return (
+            doc.ipfsHash,
+            doc.issuer,
+            doc.receiver,
+            doc.title,
+            doc.timestamp,
+            doc.flagged,
+            doc.txHash
+        );
     }
 
-    // Get total documents count
+    // Get total document count
     function getDocumentCount() public view returns (uint256) {
         return documents.length;
+    }	
+
+    // Verify using index
+    function verifyByIndex(uint256 index)
+        public
+        view
+        returns (
+            bool exists,
+            string memory ipfsHash,
+            address issuer,
+            address receiver,
+            string memory title,
+            uint256 timestamp,
+            bool flagged,
+            bytes32 txHash
+        )
+    {
+        if (index >= documents.length) return (false, "", address(0), address(0), "", 0, false, 0);
+        Document memory doc = documents[index];
+        return (
+            true,
+            doc.ipfsHash,
+            doc.issuer,
+            doc.receiver,
+            doc.title,
+            doc.timestamp,
+            doc.flagged,
+            doc.txHash
+        );
     }
 
-    // Verify document existence instantly by ipfsHash and receiver
-    function verifyDocument(string memory ipfsHash, address receiver) public view returns (
-        bool exists,
-        address issuer,
-        uint256 timestamp,
-        bool flagged
-    ) {
-        bytes32 key = keccak256(abi.encodePacked(ipfsHash, receiver));
-        uint256 docIndexPlusOne = documentIndexByHashReceiver[key];
-        if (docIndexPlusOne == 0) {
-            // Not found
-            return (false, address(0), 0, false);
+    // Verify using txHash
+    function verifyByTxHash(bytes32 txHash)
+        public
+        view
+        returns (
+            bool exists,
+            uint256 index,
+            string memory ipfsHash,
+            address issuer,
+            address receiver,
+            string memory title,
+            uint256 timestamp,
+            bool flagged
+        )
+    {
+        for (uint256 i = 0; i < documents.length; i++) {
+            if (documents[i].txHash == txHash) {
+                Document memory doc = documents[i];
+                return (
+                    true,
+                    i,
+                    doc.ipfsHash,
+                    doc.issuer,
+                    doc.receiver,
+                    doc.title,
+                    doc.timestamp,
+                    doc.flagged
+                );
+            }
         }
-
-        Document memory doc = documents[docIndexPlusOne - 1];
-        return (true, doc.issuer, doc.timestamp, doc.flagged);
+        return (false, 0, "", address(0), address(0), "", 0, false);
     }
 
-    // Only owner or issuer can flag/unflag a document
-    function setFlag(uint256 index, bool flagStatus) public {
+    // Get document by txHash (new function)
+    function getDocumentByTxHash(bytes32 txHash)
+        public
+        view
+        returns (
+            string memory ipfsHash,
+            address issuer,
+            address receiver,
+            string memory title,
+            uint256 timestamp,
+            bool flagged,
+            bytes32 returnedTxHash
+        )
+    {
+        for (uint256 i = 0; i < documents.length; i++) {
+            if (documents[i].txHash == txHash) {
+                Document memory doc = documents[i];
+                return (
+                    doc.ipfsHash,
+                    doc.issuer,
+                    doc.receiver,
+                    doc.title,
+                    doc.timestamp,
+                    doc.flagged,
+                    doc.txHash
+                );
+            }
+        }
+        revert("Document not found");
+    }
+
+    // Flag/unflag document (must be issuer or receiver)
+    function setFlag(uint256 index, address actor, bool flagStatus) public {
         require(index < documents.length, "Invalid document index");
         Document storage doc = documents[index];
-        require(msg.sender == doc.issuer || msg.sender == owner, "Not authorized to flag");
+
+        require(actor == doc.issuer || actor == doc.receiver, "Actor not authorized");
+        require(msg.sender == actor, "Sender must be the actor");
+
         doc.flagged = flagStatus;
         emit DocumentFlagged(index, flagStatus);
     }
