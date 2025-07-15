@@ -68,7 +68,7 @@ class VerifyDocumentView(APIView):
 
     def post(self, request):
         user = request.user
-        index = None #request.data.get("index")
+        index = request.data.get("index")
         tx_hash = request.data.get("tx_hash")
         
         if user.role != 'authority' or not user.is_verified_authority:
@@ -98,7 +98,7 @@ class VerifyDocumentView(APIView):
 
             else:
                 # Call verifyByTxHash contract wrapper
-                #tx_hash = "0x" + tx_hash
+                tx_hash = "0x" + tx_hash
                 result = verify_document_by_tx_hash(tx_hash)
                 exists = result[0]
 

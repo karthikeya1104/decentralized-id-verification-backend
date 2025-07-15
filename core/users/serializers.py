@@ -17,6 +17,7 @@ class AuthorityRegistrationSerializer(serializers.ModelSerializer):
         fields = ['public_id', 'password', 'username', 'name', 'sector', 'proof_document']
     
     def create(self, validated_data):
+        print(validated_data)
         validated_data['role'] = 'authority'
         validated_data['is_verified_authority'] = False
         user = CustomUser(**validated_data)

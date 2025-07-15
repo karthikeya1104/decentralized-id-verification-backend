@@ -18,7 +18,7 @@ class CustomUser(AbstractUser):
     # Authority-only fields
     name = models.CharField(max_length=100, blank=True)
     sector = models.CharField(max_length=100, blank=True)
-    proof_document = models.FileField(upload_to='user_proofs/', null=True, blank=True)
+    proof_document = models.FileField(upload_to='authority_proofs/', null=True, blank=True)
     is_verified_authority = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):

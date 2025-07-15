@@ -8,7 +8,7 @@ from .serializers import AuthorityIssuedDocumentSerializer, UserUploadedDocument
 from blockchain.services import store_document_on_chain
 from blockchain.ipfs_utils import upload_file_to_ipfs
 from users.models import CustomUser
-
+from blockchain.models import VerificationHistory
 
 class IssueDocumentView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -126,4 +126,49 @@ class UserDocumentsListView(APIView):
         return Response({
             'user_uploaded_documents': user_docs_serialized,
             'authority_issued_documents': authority_docs_serialized,
+        })
+
+
+class UserDocumentStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # Uploaded by user
+        user_docs = UserUploadedDocument.objects.filter(owner=user)
+        uploaded_docs_count = user_docs.count()
+
+        # Authority issued to user
+        authority_docs = AuthorityIssuedDocument.objects.filter(receiver=user)
+        authority_docs_count = authority_docs.count()
+
+        # Flagged documents - assuming is_flagged field
+        flagged_docs_count = (
+            user_docs.filter(flagged=True).count() +
+            authority_docs.filter(flagged=True).count()
+        )
+
+        return Response({
+            'uploaded_documents': uploaded_docs_count,
+            'authority_issued_documents': authority_docs_count,
+            'flagged_documents': flagged_docs_count,
+        })
+
+
+class AuthorityDashboardStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if not user.is_verified_authority:
+            return Response({'error': 'Not authorized'}, status=403)
+
+        issued_docs_count = AuthorityIssuedDocument.objects.filter(issuer=user).count()
+        verified_docs_count = VerificationHistory.objects.filter(verifier=user).count()
+
+        return Response({
+            'issued_documents_count': issued_docs_count,
+            'verified_documents_count': verified_docs_count,
         })
