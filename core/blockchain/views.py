@@ -68,8 +68,8 @@ class VerifyDocumentView(APIView):
 
     def post(self, request):
         user = request.user
-        index = request.data.get("index")
-        tx_hash = request.data.get("tx_hash")
+        index = request.data.get("index").strip() if request.data.get("index") else None
+        tx_hash = request.data.get("tx_hash").strip() if request.data.get("tx_hash") else None
         
         if user.role != 'authority' or not user.is_verified_authority:
             return Response({"error": "Only authority users can verify documents."}, status=403)
