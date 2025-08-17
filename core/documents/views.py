@@ -9,6 +9,7 @@ from blockchain.services import store_document_on_chain
 from blockchain.ipfs_utils import upload_file_to_ipfs
 from users.models import CustomUser
 from blockchain.models import VerificationHistory
+from core.utils import log_event
 
 class IssueDocumentView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -51,6 +52,17 @@ class IssueDocumentView(APIView):
         )
 
         serializer = AuthorityIssuedDocumentSerializer(doc)
+        
+        log_event(
+            user=issuer,
+            event_type="ISSUE_DOCUMENT",
+            level="INFO",
+            message=f"Issued document '{title}' to {receiver.username}",
+            path=request.path,
+            method=request.method,
+            status_code=201
+        )
+        
         return Response({'status': 'success', 'document': serializer.data}, status=201)
 
 
@@ -89,6 +101,17 @@ class UserUploadDocumentView(APIView):
         )
 
         serializer = UserUploadedDocumentSerializer(doc)
+        
+        log_event(
+            user=user,
+            event_type="UPLOAD_DOCUMENT",
+            level="INFO",
+            message=f"User uploaded document '{title}'",
+            path=request.path,
+            method=request.method,
+            status_code=201
+        )
+        
         return Response({'status': 'success', 'document': serializer.data}, status=201)
 
 
