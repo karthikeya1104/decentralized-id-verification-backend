@@ -27,14 +27,19 @@ The system allows authorities to issue verified documents and users to upload th
 
 ## 📂 Project Structure
 ```text
-core/
-│── admin/ # For Monitoring
-│── core/ # Django project config
-│── users/ # User auth & profiles
-│── documents/ # Document management
-│── blockchain/ # Smart contract integration
-│── requirements.txt # Python dependencies
-│── manage.py # Django entrypoint
+decentralized-id-verification-backend/
+│── core/
+│   │── admin/              # Staff/Admin monitoring and management
+│   │── core/               # Django project configuration
+│   │── users/              # User authentication and profile management
+│   │── documents/          # Document issuance and user uploads
+│   │── blockchain/         # Smart contract integration for document verification
+│── manage.py               # Django project entrypoint
+│── requirements.txt        # Python dependencies
+│── smartcontract/          # Smart contract files
+│   │── DocumentStorage.txt  # Smart contract source (originally .sol)
+
+
 ```
 
 
@@ -44,7 +49,7 @@ core/
 
 ### 1️⃣ Clone the Repository
 ```bash
-git clone https://github.com/your-username/decentralized-id-verification-backend.git
+git clone https://github.com/karthikeya1104/decentralized-id-verification-backend.git
 
 cd decentralized-id-verification-backend
 ```
@@ -84,6 +89,7 @@ DATABASE_NAME=db.sqlite3
 
 ### 4️⃣ Run Migrations & Start Server
 ``` bash
+cd core
 python manage.py migrate
 python manage.py runserver
 ```
@@ -120,11 +126,51 @@ To integrate the smart contract with the backend, you need the deployed contract
 
 > **Note:** Each deployment gives a new address. Use a testnet or local Ganache for persistent testing.
 
+## 📡 Backend API Endpoints
 
-### 🤝 Contributing
+### Users
+
+| Method | URL                              | Description                |
+| ------ | -------------------------------- | -------------------------- |
+| POST   | `/api/users/login/`              | Obtain JWT token for login |
+| POST   | `/api/users/token/refresh/`      | Refresh JWT token          |
+| POST   | `/api/users/authority/register/` | Register a new authority   |
+| GET    | `/api/users/stats/`              | System statistics          |
+
+
+### Documents
+
+| Method | URL                                        | Description                               |
+| ------ | ------------------------------------------ | ----------------------------------------- |
+| POST   | `/api/documents/issue/`                    | Authority issues a document               |
+| POST   | `/api/documents/upload/`                   | User uploads a document                   |
+| GET    | `/api/documents/user-documents/`           | List of documents uploaded by the user    |
+| GET    | `/api/documents/authority-documents/`      | List of documents uploaded by authorities |
+| GET    | `/api/documents/user/document-stats/`      | Stats for a user’s documents              |
+| GET    | `/api/documents/authority/document-stats/` | Stats for authority dashboard             |
+
+### Blockchain
+
+| Method | URL                       | Description                              |
+| ------ | ------------------------- | ---------------------------------------- |
+| POST   | `/api/blockchain/flag/`   | Flag a document as lost or stolen        |
+| GET    | `/api/blockchain/verify/` | Verify a document by its blockchain hash |
+
+### Staff/Admin
+
+| Method | URL                            | Description                    |
+| ------ | ------------------------------ | ------------------------------ |
+| POST   | `/api/staff/login/`            | Staff login                    |
+| GET    | `/api/staff/all-users/`        | List all users and authorities |
+| POST   | `/api/staff/verify-authority/` | Verify an authority            |
+| POST   | `/api/staff/create-user/`      | Create a new user              |
+| GET    | `/api/staff/system-logs/`      | View system logs               |
+
+
+## 🤝 Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
-### 📜 License
+## 📜 License
 
 MIT License © 2025 Nagelli Karthikeya Goud
